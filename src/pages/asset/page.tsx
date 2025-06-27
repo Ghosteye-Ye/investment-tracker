@@ -49,7 +49,8 @@ export default function AssetPage() {
 
     const updatedAsset = {
       ...asset,
-      transactions: [...asset.transactions, newTransaction],
+      // transactions: [...asset.transactions, newTransaction],
+      transactions: [newTransaction, ...asset.transactions]
     }
 
     const updatedAccount = {
@@ -85,11 +86,9 @@ export default function AssetPage() {
     )
     const annualReturn = (profit / (buyPortionCost + buyFee)) * (365 / daysDiff) * 100
 
-    const remainingQuantity = transaction.buyQuantity - (transaction.sellQuantity || 0)
-
     let updatedTransactions: Transaction[] = []
 
-    if (sellQuantity === remainingQuantity) {
+    if (sellQuantity === transaction.buyQuantity) {
       // 完全卖出
       updatedTransactions = asset.transactions.map((t) =>
         t.id === transactionId
@@ -131,7 +130,7 @@ export default function AssetPage() {
           : t
       )
 
-      updatedTransactions.push(subTransaction)
+      updatedTransactions.unshift(subTransaction)
     }
 
     const updatedAsset = {
@@ -254,7 +253,7 @@ export default function AssetPage() {
           <div className="space-y-4">
             {asset.transactions
               .filter((t) => !t.parentId)
-              .sort((a, b) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime())
+              // .sort((a, b) => new Date(b.buyDate).getTime() - new Date(a.buyDate).getTime())
               .map((transaction) => {
                 const subTransactions = asset.transactions.filter((t) => t.parentId === transaction.id)
                 return (
