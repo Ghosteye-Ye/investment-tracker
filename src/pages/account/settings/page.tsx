@@ -1,75 +1,71 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import type { Account } from "@/types/investment"
+import { ArrowLeft, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import type { Account } from "@/types/investment";
+import { getAccountById, updateAccount } from "@/hooks/useInvestmentDB";
 
 export default function AccountSettingsPage() {
-  const params = useParams()
+  const params = useParams<{ accountId: string }>();
   const navigate = useNavigate();
-  const [account, setAccount] = useState<Account | null>(null)
+
+  const [account, setAccount] = useState<Account | null>(null);
   const [settings, setSettings] = useState({
     buyFeeRate: 0.1,
     sellFeeRate: 0.1,
     expandSubTransactions: true,
     currency: "¥",
-  })
+  });
 
   useEffect(() => {
-    const savedAccounts = localStorage.getItem("investment-accounts")
-    if (savedAccounts) {
-      const accounts: Account[] = JSON.parse(savedAccounts)
-      const foundAccount = accounts.find((acc) => acc.id === params.id)
-      if (foundAccount) {
-        setAccount(foundAccount)
-        setSettings(
-          foundAccount.settings || {
-            buyFeeRate: 0.1,
-            sellFeeRate: 0.1,
-            expandSubTransactions: true,
-            currency: "¥",
-          },
-        )
+    if (!params.accountId) return;
+    getAccountById(params.accountId).then((acc) => {
+      if (acc) {
+        setAccount(acc);
+        setSettings(acc.settings || settings);
       }
-    }
-  }, [params.id])
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.accountId]);
 
-  const handleSave = () => {
-    if (!account) return
+  const handleSave = async () => {
+    if (!account) return;
 
-    const updatedAccount = {
+    const updatedAccount: Account = {
       ...account,
       settings,
-    }
+    };
 
-    // Update localStorage
-    const savedAccounts = localStorage.getItem("investment-accounts")
-    if (savedAccounts) {
-      const accounts: Account[] = JSON.parse(savedAccounts)
-      const updatedAccounts = accounts.map((acc) => (acc.id === account.id ? updatedAccount : acc))
-      localStorage.setItem("investment-accounts", JSON.stringify(updatedAccounts))
-    }
-
-    navigate(`/account/${account.id}`)
-  }
+    await updateAccount(updatedAccount);
+    navigate(`/account/${account.id}`);
+  };
 
   if (!account) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-white mb-2">账户不存在</h2>
-          <Button onClick={() => navigate("/")} className="bg-purple-500 hover:bg-purple-600">
+          <Button
+            onClick={() => navigate("/")}
+            className="bg-purple-500 hover:bg-purple-600"
+          >
             返回首页
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -113,7 +109,13 @@ export default function AccountSettingsPage() {
                     step="0.01"
                     value={settings.buyFeeRate}
                     onChange={(e) =>
-                      setSettings({ ...settings, buyFeeRate: Math.max(0, Number.parseFloat(e.target.value) || 0) })
+                      setSettings({
+                        ...settings,
+                        buyFeeRate: Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        ),
+                      })
                     }
                     className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
                   />
@@ -129,7 +131,13 @@ export default function AccountSettingsPage() {
                     step="0.01"
                     value={settings.sellFeeRate}
                     onChange={(e) =>
-                      setSettings({ ...settings, sellFeeRate: Math.max(0, Number.parseFloat(e.target.value) || 0) })
+                      setSettings({
+                        ...settings,
+                        sellFeeRate: Math.max(
+                          0,
+                          parseFloat(e.target.value) || 0
+                        ),
+                      })
                     }
                     className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
                   />
@@ -142,17 +150,23 @@ export default function AccountSettingsPage() {
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
             <CardHeader>
               <CardTitle className="text-white">显示设置</CardTitle>
-              <CardDescription className="text-slate-400">自定义交易记录的显示方式</CardDescription>
+              <CardDescription className="text-slate-400">
+                自定义交易记录的显示方式
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-slate-300">默认展开子交易</Label>
-                  <p className="text-sm text-slate-400">部分卖出的交易记录是否默认展开显示</p>
+                  <p className="text-sm text-slate-400">
+                    部分卖出的交易记录是否默认展开显示
+                  </p>
                 </div>
                 <Switch
                   checked={settings.expandSubTransactions}
-                  onCheckedChange={(checked) => setSettings({ ...settings, expandSubTransactions: checked })}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, expandSubTransactions: checked })
+                  }
                 />
               </div>
             </CardContent>
@@ -162,7 +176,9 @@ export default function AccountSettingsPage() {
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
             <CardHeader>
               <CardTitle className="text-white">货币设置</CardTitle>
-              <CardDescription className="text-slate-400">设置显示的货币符号</CardDescription>
+              <CardDescription className="text-slate-400">
+                设置显示的货币符号
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -173,7 +189,9 @@ export default function AccountSettingsPage() {
                   id="currency"
                   type="text"
                   value={settings.currency}
-                  onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({ ...settings, currency: e.target.value })
+                  }
                   className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
                   placeholder="¥"
                 />
@@ -194,5 +212,5 @@ export default function AccountSettingsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

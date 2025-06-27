@@ -6,43 +6,52 @@ import { Button } from "@/components/ui/button"
 import { AccountCard } from "@/components/account-card"
 import { CreateAccountModal } from "@/components/create-account-modal"
 import type { Account } from "@/types/investment"
+import {
+  getAllAccounts,
+  addAccount,
+  updateAccount,
+  deleteAccount,
+  exportAccounts,
+  importAccounts,
+} from "@/hooks/useInvestmentDB"
 
 export default function HomePage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   useEffect(() => {
-    const savedAccounts = localStorage.getItem("investment-accounts")
-    if (savedAccounts) {
-      setAccounts(JSON.parse(savedAccounts))
-    }
+    getAllAccounts().then(setAccounts)
   }, [])
 
-  const saveAccounts = (newAccounts: Account[]) => {
-    setAccounts(newAccounts)
-    localStorage.setItem("investment-accounts", JSON.stringify(newAccounts))
-  }
-
-  // Update the handleCreateAccount function to include default settings
-  const handleCreateAccount = (name: string, type: "stock" | "gold") => {
+  const handleCreateAccount = async (name: string, type: "stock" | "gold") => {
     const newAccount: Account = {
       id: Date.now().toString(),
       name,
       type,
       assets: [],
       settings: {
-        buyFeeRate: 0.1, // 默认0.1%手续费
+        buyFeeRate: 0.1,
         sellFeeRate: 0.1,
         expandSubTransactions: true,
         currency: "¥",
       },
       createdAt: new Date().toISOString(),
     }
-    saveAccounts([...accounts, newAccount])
+    await addAccount(newAccount)
+    setAccounts((prev) => [...prev, newAccount])
     setShowCreateModal(false)
   }
 
-  // Update the getTotalStats function to include fees
+  const handleUpdateAccount = async (updatedAccount: Account) => {
+    await updateAccount(updatedAccount)
+    setAccounts((prev) => prev.map((a) => (a.id === updatedAccount.id ? updatedAccount : a)))
+  }
+
+  const handleDeleteAccount = async (accountId: string) => {
+    await deleteAccount(accountId)
+    setAccounts((prev) => prev.filter((a) => a.id !== accountId))
+  }
+
   const getTotalStats = () => {
     let totalCost = 0
     let totalProfit = 0
@@ -73,26 +82,63 @@ export default function HomePage() {
     <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-4">
           <h1 className="mb-2 text-3xl font-bold text-white">投资记录助手</h1>
           <p className="text-slate-400">管理您的股票和黄金投资</p>
         </div>
 
+        {/* Export / Import */}
+        <div className="flex gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const json = await exportAccounts()
+              const blob = new Blob([json], { type: "application/json" })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement("a")
+              a.href = url
+              a.download = "investment-backup.json"
+              a.click()
+              URL.revokeObjectURL(url)
+            }}
+          >
+            导出数据
+          </Button>
+
+          <input
+            type="file"
+            accept="application/json"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const text = await file.text()
+              await importAccounts(text)
+              const all = await getAllAccounts()
+              setAccounts(all)
+            }}
+            className="hidden"
+            id="import-input"
+          />
+          <Button variant="outline" onClick={() => document.getElementById("import-input")?.click()}>
+            导入数据
+          </Button>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] border border-slate-700/50">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-400">总投资</p>
                 <p className="text-2xl font-bold text-white">¥{totalCost.toLocaleString()}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)]">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-blue-400" />
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] border border-slate-700/50">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-400">总收益</p>
@@ -101,7 +147,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)] ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center ${
                   totalProfit >= 0 ? "bg-green-500/20" : "bg-red-500/20"
                 }`}
               >
@@ -114,7 +160,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] border border-slate-700/50">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-400">总收益率</p>
@@ -123,7 +169,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)] ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center ${
                   totalReturn >= 0 ? "bg-green-500/20" : "bg-red-500/20"
                 }`}
               >
@@ -137,29 +183,28 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Accounts Section */}
+        {/* Account Section */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-white">投资账户</h2>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-2 text-white transition-all duration-300 transform rounded-full shadow-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 hover:shadow-xl hover:scale-105"
+            className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
           >
             <Plus className="w-4 h-4 mr-2" />
             新建账户
           </Button>
         </div>
 
-        {/* Accounts Grid */}
         {accounts.length === 0 ? (
           <div className="py-12 text-center">
-            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)]">
+            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
               <DollarSign className="w-12 h-12 text-slate-500" />
             </div>
             <h3 className="mb-2 text-lg font-medium text-white">还没有投资账户</h3>
             <p className="mb-6 text-slate-400">创建您的第一个投资账户开始记录</p>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="px-8 py-3 text-white transition-all duration-300 transform rounded-full shadow-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 hover:shadow-xl hover:scale-105"
+              className="px-8 py-3 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
             >
               <Plus className="w-4 h-4 mr-2" />
               创建账户
@@ -171,20 +216,13 @@ export default function HomePage() {
               <AccountCard
                 key={account.id}
                 account={account}
-                onUpdate={(updatedAccount) => {
-                  const updatedAccounts = accounts.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
-                  saveAccounts(updatedAccounts)
-                }}
-                onDelete={(accountId) => {
-                  const updatedAccounts = accounts.filter((acc) => acc.id !== accountId)
-                  saveAccounts(updatedAccounts)
-                }}
+                onUpdate={handleUpdateAccount}
+                onDelete={handleDeleteAccount}
               />
             ))}
           </div>
         )}
 
-        {/* Create Account Modal */}
         <CreateAccountModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
