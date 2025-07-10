@@ -1,6 +1,8 @@
 export interface AccountSettings {
-  buyFeeRate: number // 买入手续费率 (%)
-  sellFeeRate: number // 卖出手续费率 (%)
+  buyFeePerUnit: number // 每股/克买入手续费
+  sellFeePerUnit: number // 每股/克卖出手续费
+  minBuyFee: number // 最低买入手续费
+  minSellFee: number // 最低卖出手续费
   expandSubTransactions: boolean // 默认展开子交易
   currency: string // 货币单位
 }

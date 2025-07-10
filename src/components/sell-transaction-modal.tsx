@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import type { AccountSettings } from "@/types/account" // Import AccountSettings type
+import type { AccountSettings } from "@/types/investment" // Import AccountSettings type
 import { useState } from "react"
 import { X, TrendingUp, TrendingDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -41,7 +41,7 @@ export function SellTransactionModal({
     const price = Number.parseFloat(sellPrice)
     if (quantity > 0 && price > 0) {
       const sellRevenue = price * quantity
-      const sellFee = sellRevenue * (accountSettings.sellFeeRate / 100)
+      const sellFee = Math.max(quantity * accountSettings.sellFeePerUnit, accountSettings.minSellFee)
       const buyPortionCost = transaction.buyPrice * quantity
       const buyFee = (transaction.buyFee || 0) * (quantity / transaction.buyQuantity)
       return sellRevenue - sellFee - buyPortionCost - buyFee
@@ -188,10 +188,9 @@ export function SellTransactionModal({
                   <p className="text-slate-400 text-sm">卖出手续费</p>
                   <p className="text-white">
                     {accountSettings.currency}
-                    {(
-                      Number.parseFloat(sellQuantity) *
-                      Number.parseFloat(sellPrice) *
-                      (accountSettings.sellFeeRate / 100)
+                    {Math.max(
+                      Number.parseFloat(sellQuantity) * accountSettings.sellFeePerUnit,
+                      accountSettings.minSellFee
                     ).toFixed(2)}
                   </p>
                 </div>

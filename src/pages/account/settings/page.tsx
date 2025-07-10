@@ -23,15 +23,18 @@ export default function AccountSettingsPage() {
 
   const [account, setAccount] = useState<Account | null>(null);
   const [settings, setSettings] = useState({
-    buyFeeRate: 0.1,
-    sellFeeRate: 0.1,
+    buyFeePerUnit: 0.0035,
+    sellFeePerUnit: 0.0035,
+    minBuyFee: 0.35,
+    minSellFee: 0.35,
     expandSubTransactions: true,
-    currency: "¥",
+    currency: "$",
   });
 
   useEffect(() => {
     if (!params.accountId) return;
     getAccountById(params.accountId).then((acc) => {
+      console.log("======= acc ( page.tsx ) =======\n", acc);
       if (acc) {
         setAccount(acc);
         setSettings(acc.settings || settings);
@@ -93,54 +96,102 @@ export default function AccountSettingsPage() {
             <CardHeader>
               <CardTitle className="text-white">手续费设置</CardTitle>
               <CardDescription className="text-slate-400">
-                设置买入和卖出时的手续费率，将自动计算到收益中
+                设置每股/克的手续费和最低手续费，将自动计算到收益中
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="buy-fee" className="text-slate-300">
-                    买入手续费率 (%)
-                  </Label>
-                  <Input
-                    id="buy-fee"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={settings.buyFeeRate}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        buyFeeRate: Math.max(
-                          0,
-                          parseFloat(e.target.value) || 0
-                        ),
-                      })
-                    }
-                    className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="buy-fee-per-unit" className="text-slate-300">
+                      每{account.type === "stock" ? "股" : "克"}买入手续费 ({settings.currency})
+                    </Label>
+                    <Input
+                      id="buy-fee-per-unit"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={settings.buyFeePerUnit}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          buyFeePerUnit: Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sell-fee-per-unit" className="text-slate-300">
+                      每{account.type === "stock" ? "股" : "克"}卖出手续费 ({settings.currency})
+                    </Label>
+                    <Input
+                      id="sell-fee-per-unit"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={settings.sellFeePerUnit}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          sellFeePerUnit: Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sell-fee" className="text-slate-300">
-                    卖出手续费率 (%)
-                  </Label>
-                  <Input
-                    id="sell-fee"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={settings.sellFeeRate}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        sellFeeRate: Math.max(
-                          0,
-                          parseFloat(e.target.value) || 0
-                        ),
-                      })
-                    }
-                    className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="min-buy-fee" className="text-slate-300">
+                      最低买入手续费 ({settings.currency})
+                    </Label>
+                    <Input
+                      id="min-buy-fee"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={settings.minBuyFee}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          minBuyFee: Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min-sell-fee" className="text-slate-300">
+                      最低卖出手续费 ({settings.currency})
+                    </Label>
+                    <Input
+                      id="min-sell-fee"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={settings.minSellFee}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          minSellFee: Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className="bg-slate-700/50 border-slate-600 text-white focus:border-purple-500 focus:ring-purple-500/20"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>

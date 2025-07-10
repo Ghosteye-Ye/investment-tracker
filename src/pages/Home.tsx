@@ -30,10 +30,12 @@ export default function HomePage() {
       type,
       assets: [],
       settings: {
-        buyFeeRate: 0.1,
-        sellFeeRate: 0.1,
+        buyFeePerUnit: type === "stock" ? 0.0035 : 0, // 每股/克买入手续费
+        sellFeePerUnit: type === "stock" ? 0.0035 : 4, // 每股/克卖出手续费
+        minBuyFee: type === "stock" ? 0.35 : 0, // 最低买入手续费
+        minSellFee: type === "stock" ? 0.35 : 4, // 最低卖出手续费
         expandSubTransactions: true,
-        currency: "¥",
+        currency: type === 'stock' ? "$" : "¥",
       },
       createdAt: new Date().toISOString(),
     }

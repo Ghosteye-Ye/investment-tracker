@@ -36,7 +36,7 @@ export default function AssetPage() {
   const handleCreateTransaction = async (buyDate: string, buyQuantity: number, buyPrice: number) => {
     if (!account || !asset) return
 
-    const buyFee = buyQuantity * buyPrice * (account.settings.buyFeeRate / 100)
+    const buyFee = Math.max(buyQuantity * account.settings.buyFeePerUnit, account.settings.minBuyFee)
 
     const newTransaction: Transaction = {
       id: Date.now().toString(),
@@ -75,7 +75,7 @@ export default function AssetPage() {
     if (!transaction) return
 
     const sellRevenue = sellPrice * sellQuantity
-    const sellFee = sellRevenue * (account.settings.sellFeeRate / 100)
+    const sellFee = Math.max(sellQuantity * account.settings.sellFeePerUnit, account.settings.minSellFee)
     const buyPortionCost = transaction.buyPrice * sellQuantity
     const buyFee = (transaction.buyFee || 0) * (sellQuantity / transaction.buyQuantity)
     const profit = sellRevenue - sellFee - buyPortionCost - buyFee
