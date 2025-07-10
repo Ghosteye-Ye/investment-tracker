@@ -57,7 +57,7 @@ export function AccountCard({ account, onUpdate, onDelete }: AccountCardProps) {
                   e.preventDefault()
                   e.stopPropagation() // 阻止事件冒泡
                 }}
-                className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0 opacity-100 transition-opacity"
               >
                 <MoreVertical className="w-4 h-4" />
               </Button>

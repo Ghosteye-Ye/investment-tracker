@@ -47,7 +47,7 @@ export function AssetCard({ asset, accountId, accountType }: AssetCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0 opacity-100 transition-opacity"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation() // 阻止事件冒泡
