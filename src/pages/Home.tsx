@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Plus, DollarSign } from "lucide-react"
+import { Plus, DollarSign, Download, Upload, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AccountCard } from "@/components/account-card"
 import { CreateAccountModal } from "@/components/create-account-modal"
@@ -71,28 +71,45 @@ export default function HomePage() {
   return (
     <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="mb-2 text-3xl font-bold text-white">投资记录助手</h1>
-          <p className="text-slate-400">管理您的股票和黄金投资</p>
-        </div>
+        {/* Header Card */}
+        <div className="mb-8 p-6 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
+                  <TrendingUp className="w-6 h-6 text-purple-400" />
+                </div>
+                <h1 className="text-3xl font-bold text-white">investment-tracker</h1>
+              </div>
+              <p className="text-slate-400 ml-15">管理您的股票和黄金投资</p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                onClick={handleExport}
+                className="bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/50 hover:border-slate-500/50 text-slate-300 hover:text-white backdrop-blur-sm transition-all duration-200"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                导出数据
+              </Button>
 
-        {/* Export / Import */}
-        <div className="flex gap-4 mb-6">
-          <Button variant="outline" onClick={handleExport}>
-            导出数据
-          </Button>
-
-          <input
-            type="file"
-            accept="application/json"
-            onChange={handleImport}
-            className="hidden"
-            id="import-input"
-          />
-          <Button variant="outline" onClick={() => document.getElementById("import-input")?.click()}>
-            导入数据
-          </Button>
+              <input
+                type="file"
+                accept="application/json"
+                onChange={handleImport}
+                className="hidden"
+                id="import-input"
+              />
+              <Button
+                variant="ghost"
+                onClick={() => document.getElementById("import-input")?.click()}
+                className="bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/50 hover:border-slate-500/50 text-slate-300 hover:text-white backdrop-blur-sm transition-all duration-200"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                导入数据
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Overview */}
@@ -117,9 +134,9 @@ export default function HomePage() {
           {accounts.length > 0 && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+              className="px-6 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-sm text-purple-100 hover:text-white rounded-full transition-all duration-200"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               新建账户
             </Button>
           )}

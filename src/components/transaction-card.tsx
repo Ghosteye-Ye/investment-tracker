@@ -126,7 +126,7 @@ export function TransactionCard({
                   <Button
                     onClick={() => setShowSellModal(true)}
                     size="sm"
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full px-4 py-2 shadow-lg"
+                    className="bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-400/50 backdrop-blur-sm text-green-100 hover:text-white rounded-full px-4 py-2 transition-all duration-200"
                   >
                     卖出
                   </Button>

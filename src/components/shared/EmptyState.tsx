@@ -22,7 +22,7 @@ export function EmptyState({ icon: Icon, title, description, actionLabel, onActi
       <p className="text-slate-400 mb-6">{description}</p>
       <Button
         onClick={onAction}
-        className="px-8 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full"
+        className="px-8 py-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-sm text-purple-100 hover:text-white rounded-full transition-all duration-200"
       >
         {actionLabel}
       </Button>

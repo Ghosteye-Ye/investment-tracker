@@ -164,7 +164,7 @@ revenueRate = (totalProfit / soldCost) × 100
 - **Theme**: Dark theme with glassmorphism (`bg-slate-800/50 backdrop-blur-sm`)
 - **Color Palette**: Slate base with semantic colors (green for profit, red for loss)
 - **Gradients**: `from-purple-500 to-blue-500` for CTAs
-- **Typography**: Chinese language UI (投资记录助手)
+- **Typography**: Chinese language UI (investment-tracker)
 - **Responsive**: Grid layouts with `md:` and `lg:` breakpoints
 
 ### Path Aliases

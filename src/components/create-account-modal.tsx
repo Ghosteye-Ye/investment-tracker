@@ -99,7 +99,7 @@ export function CreateAccountModal({ isOpen, onClose, onSubmit }: CreateAccountM
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg"
+              className="flex-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-sm text-purple-100 hover:text-white transition-all duration-200"
             >
               创建账户
             </Button>

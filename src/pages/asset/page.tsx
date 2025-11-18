@@ -203,9 +203,9 @@ export default function AssetPage() {
           {asset.transactions.length > 0 && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+              className="px-6 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-sm text-purple-100 hover:text-white rounded-full transition-all duration-200"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               添加交易
             </Button>
           )}

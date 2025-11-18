@@ -242,7 +242,7 @@ export function SellTransactionModal({
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg"
+              className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-400/50 backdrop-blur-sm text-green-100 hover:text-white transition-all duration-200"
             >
               确认卖出
             </Button>

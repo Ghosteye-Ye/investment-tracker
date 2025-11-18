@@ -254,7 +254,7 @@ export default function AccountSettingsPage() {
           <div className="flex justify-end">
             <Button
               onClick={handleSave}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-8 py-2 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 backdrop-blur-sm text-purple-100 hover:text-white px-8 py-2 transition-all duration-200"
             >
               <Save className="w-4 h-4 mr-2" />
               保存设置
