@@ -115,3 +115,27 @@ export function calculateAssetHolding(asset: Asset): number {
     return total + calculateHoldingQuantity(transaction)
   }, 0)
 }
+
+/**
+ * 计算资产的持仓均价（仅计算未卖出部分，不含手续费）
+ * @param asset 资产
+ * @returns 持仓均价（不含手续费）
+ */
+export function calculateAssetAveragePrice(asset: Asset): number {
+  let totalHoldingCost = 0 // 持仓部分的总成本（不含手续费）
+  let totalHoldingQuantity = 0 // 总持仓数量
+
+  asset.transactions.forEach((transaction) => {
+    const holdingQuantity = calculateHoldingQuantity(transaction)
+
+    if (holdingQuantity > 0) {
+      // 计算这笔交易中未卖出部分的成本（不含手续费）
+      const holdingCost = transaction.buyPrice * holdingQuantity
+
+      totalHoldingCost += holdingCost
+      totalHoldingQuantity += holdingQuantity
+    }
+  })
+
+  return totalHoldingQuantity > 0 ? totalHoldingCost / totalHoldingQuantity : 0
+}

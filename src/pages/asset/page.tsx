@@ -8,7 +8,7 @@ import { StatCard } from "@/components/shared/StatCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import type { Asset } from "@/types/investment"
 import { useAccountData } from "@/hooks/useAccountData"
-import { calculateAssetStats, calculateAssetHolding } from "@/services/calculationService"
+import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice } from "@/services/calculationService"
 import { createBuyTransaction, createSellTransaction, addTransactionToAsset } from "@/services/transactionService"
 
 export default function AssetPage() {
@@ -99,8 +99,9 @@ export default function AssetPage() {
     )
   }
 
-  const { totalCost, totalProfit, totalReturn } = calculateAssetStats(asset)
+  const { totalProfit, totalReturn } = calculateAssetStats(asset)
   const holdingQuantity = calculateAssetHolding(asset)
+  const averagePrice = calculateAssetAveragePrice(asset)
   const currency = account.settings.currency
 
   return (
@@ -126,7 +127,7 @@ export default function AssetPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="总成本" value={totalCost} icon={DollarSign} currency={currency} />
+          <StatCard label="买入均价" value={averagePrice} icon={DollarSign} currency={currency} />
           <StatCard
             label="已实现收益"
             value={totalProfit}
