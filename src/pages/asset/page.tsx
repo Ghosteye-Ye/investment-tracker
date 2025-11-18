@@ -8,7 +8,7 @@ import { MultiStatCard } from "@/components/shared/MultiStatCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import type { Asset } from "@/types/investment"
 import { useAccountData } from "@/hooks/useAccountData"
-import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice, calculateAssetHoldingCost } from "@/services/calculationService"
+import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice, calculateAssetHoldingCost, updateAssetStats } from "@/services/calculationService"
 import { createBuyTransaction, createSellTransaction, addTransactionToAsset } from "@/services/transactionService"
 
 export default function AssetPage() {
@@ -29,10 +29,20 @@ export default function AssetPage() {
     if (!account || !asset) return
 
     const newTransaction = createBuyTransaction({ buyDate, buyQuantity, buyPrice }, account)
-    const updatedAccount = addTransactionToAsset(account, asset.id, newTransaction)
+    let updatedAccount = addTransactionToAsset(account, asset.id, newTransaction)
 
-    const updatedAsset = updatedAccount.assets.find((a) => a.id === asset.id)
-    if (updatedAsset) setAsset(updatedAsset)
+    // 更新资产的统计数据
+    const assetToUpdate = updatedAccount.assets.find((a) => a.id === asset.id)
+    if (assetToUpdate) {
+      const updatedAssetWithStats = updateAssetStats(assetToUpdate)
+      updatedAccount = {
+        ...updatedAccount,
+        assets: updatedAccount.assets.map((a) =>
+          a.id === asset.id ? updatedAssetWithStats : a
+        ),
+      }
+      setAsset(updatedAssetWithStats)
+    }
 
     await saveAccount(updatedAccount)
     setShowCreateModal(false)
@@ -59,10 +69,13 @@ export default function AssetPage() {
       t.id === transaction.id ? updatedTransaction : t
     )
 
-    const updatedAsset: Asset = {
+    let updatedAsset: Asset = {
       ...asset,
       transactions: updatedTransactions,
     }
+
+    // 更新资产的统计数据
+    updatedAsset = updateAssetStats(updatedAsset)
 
     const updatedAccount = {
       ...account,

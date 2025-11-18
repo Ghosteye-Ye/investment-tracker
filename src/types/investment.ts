@@ -28,6 +28,14 @@ export interface Asset {
   symbol: string
   transactions: Transaction[]
   createdAt: string
+  // 缓存的统计数据（每次交易更新时同步更新）
+  stats?: {
+    holdingQuantity: number // 持有数量
+    averagePrice: number // 买入均价
+    holdingCost: number // 持有成本
+    totalProfit: number // 已实现收益
+    totalReturn: number // 收益率
+  }
 }
 
 export interface Account {

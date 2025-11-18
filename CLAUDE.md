@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Core Data Model
 The application tracks investment portfolios with a hierarchical structure:
 ```
-Account → Asset → Transaction
+Account → Asset → Transaction → Children[] (sub-transactions)
 ```
 
 **Account** (types/investment.ts):
@@ -39,19 +39,23 @@ Account → Asset → Transaction
 - Individual stocks or commodities within an account
 - Has `name` and `symbol` fields
 - Contains array of transactions
+- Sorted by `createdAt` descending (newest first)
 
 **Transaction**:
 - Tracks buy operations (required: buyDate, buyQuantity, buyPrice)
 - Optionally tracks sell operations (sellDate, sellQuantity, sellPrice)
 - Fee fields: `buyFee` and `sellFee` calculated based on account settings
-- Supports partial sells via `parentId` field for sub-transactions
-- Auto-calculates `profit` on sell
+- Supports partial sells via `children` array (NOT parentId - this was refactored)
+  - Full one-time sell: Updates transaction directly without creating children
+  - Partial/batch sells: Creates child transactions in `children[]` array
+- Parent transaction accumulates: `sellQuantity`, `sellFee`, `profit`, and weighted average `sellPrice`
+- Auto-calculates `profit` on sell (includes proportional fee allocation)
 
 ### Architecture & Code Organization
 
 **Services Layer** (`src/services/`):
 - `feeService.ts` - Fee calculation logic (buy, sell, proportional)
-- `calculationService.ts` - Statistics calculations (profit, return, holdings)
+- `calculationService.ts` - Statistics calculations (profit, return, holdings, average price, holding cost)
 - `transactionService.ts` - Transaction business logic (create, update, delete)
 
 **Configuration** (`src/config/`):
@@ -62,18 +66,34 @@ Account → Asset → Transaction
 - `useInvestmentDB.ts` - Database CRUD operations
 
 **Shared Components** (`src/components/shared/`):
-- `StatCard.tsx` - Reusable statistics card with trend indicators
+- `StatCard.tsx` - Single statistic card with trend indicator
+- `MultiStatCard.tsx` - Multiple related statistics in one card (used in asset page)
 - `EmptyState.tsx` - Empty state placeholder with action button
 
 ### Database Layer
 - **Storage**: Dexie-based IndexedDB (`lib/db.ts`)
 - **Schema**: Single `accounts` table with string IDs
 - **Data Structure**: Fully denormalized - entire account tree stored as one object
+  - Account contains all its assets
+  - Each asset contains all its transactions
+  - Each transaction may contain child transactions in `children[]` array
+  - Rationale: Simpler CRUD, easier UI state management, appropriate for personal tracker
 - **Operations**: All CRUD functions in `hooks/useInvestmentDB.ts`:
   - `getAllAccounts()` / `getAccountById(id)`
   - `addAccount(account)` / `updateAccount(account)` / `deleteAccount(id)`
   - `exportAccounts()` / `importAccounts(json)` - JSON backup/restore
 - **State Management**: Local useState in pages, updates via `useAccountData` hook
+- **Update Pattern**: Always use immutable updates with spread operator:
+  ```typescript
+  const updatedAccount = {
+    ...account,
+    assets: account.assets.map(asset =>
+      asset.id === assetId
+        ? { ...asset, transactions: [...asset.transactions, newTx] }
+        : asset
+    )
+  }
+  ```
 
 ### Routing & Navigation
 Routes defined in `src/routes/index.tsx`:
@@ -112,9 +132,33 @@ buyFee = Math.max(quantity * settings.buyFeePerUnit, settings.minBuyFee)
 
 // Sell fee: max(quantity * sellFeePerUnit, minSellFee)
 sellFee = Math.max(quantity * settings.sellFeePerUnit, settings.minSellFee)
+
+// Proportional buy fee (for partial sells):
+proportionalBuyFee = (originalBuyFee * sellQuantity) / buyQuantity
 ```
 
-Profit calculation accounts for proportional fee allocation on partial sells.
+**Profit Calculation** (in `transactionService.ts`):
+```typescript
+// For each sell transaction:
+sellRevenue = sellPrice * sellQuantity
+sellFee = calculateSellFee(sellQuantity, settings)
+buyCost = buyPrice * sellQuantity  // No fees
+proportionalBuyFee = calculateProportionalBuyFee(...)
+profit = sellRevenue - sellFee - buyCost - proportionalBuyFee
+```
+
+**Revenue Rate Calculation** (in `calculationService.ts`):
+```typescript
+// Revenue rate = realized profit / sold cost (without fees)
+soldCost = sum of (sellQuantity × buyPrice) for all sold transactions
+revenueRate = (totalProfit / soldCost) × 100
+```
+
+**Asset Statistics** (in `calculationService.ts`):
+- `calculateAssetHolding()` - Total unsold quantity
+- `calculateAssetAveragePrice()` - Average buy price of unsold shares (excluding fees)
+- `calculateAssetHoldingCost()` - Total cost of current holdings (unsold quantity × buy price)
+- `calculateAssetStats()` - Aggregates profit and revenue rate from all transactions
 
 ### Styling System
 - **Theme**: Dark theme with glassmorphism (`bg-slate-800/50 backdrop-blur-sm`)
@@ -131,8 +175,28 @@ Profit calculation accounts for proportional fee allocation on partial sells.
 - Use shared components to avoid duplication
 - Use `useAccountData` hook for account management
 - Always use `account.settings.currency` instead of hardcoding
+- All lists should be sorted by `createdAt` descending (newest first)
+- Transaction profit should be read from parent's `profit` field (accumulates all children)
+- When displaying timestamps, use full format with hours, minutes, seconds
 - No `console.log` in production code
 - Remove commented code before committing
+
+### Transaction Handling Rules
+1. **Creating Sell Transactions** (`createSellTransaction` in `transactionService.ts`):
+   - If selling entire quantity at once → Update parent transaction directly (no children)
+   - If partial sell or batch sells → Create child transaction, add to parent's `children[]`
+   - Parent transaction tracks cumulative: `sellQuantity`, `sellFee`, `profit`
+   - Parent's `sellPrice` is weighted average across all child sells
+
+2. **Reading Transaction Data**:
+   - For profit display: Always read `transaction.profit` from parent (never calculate from children)
+   - For sub-transaction list: Read `transaction.children || []`
+   - Parent's profit already includes all children's profit
+
+3. **Profit Calculation**:
+   - Statistics services read parent transaction's `profit` field
+   - Profit includes proportional fee allocation
+   - Revenue rate = totalProfit / soldCost (where soldCost excludes fees)
 
 ### Development Notes
 - TypeScript strict mode enabled

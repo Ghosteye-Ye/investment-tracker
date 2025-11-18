@@ -1,15 +1,15 @@
 import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Plus, TrendingUp, Settings } from "lucide-react"
+import { ArrowLeft, Plus, TrendingUp, Settings, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AssetCard } from "@/components/asset-card"
 import { CreateAssetModal } from "@/components/create-asset-modal"
-import { StatCard } from "@/components/shared/StatCard"
+import { MultiStatCard } from "@/components/shared/MultiStatCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import type { Asset } from "@/types/investment"
 import { useAccountData } from "@/hooks/useAccountData"
-import { calculateAccountStats } from "@/services/calculationService"
-import { addAssetToAccount } from "@/services/transactionService"
+import { calculateAccountDetailedStats } from "@/services/calculationService"
+import { addAssetToAccount, deleteAssetFromAccount } from "@/services/transactionService"
 
 export default function AccountPage() {
   const { accountId } = useParams<{ accountId: string }>()
@@ -34,6 +34,13 @@ export default function AccountPage() {
     setShowCreateModal(false)
   }
 
+  const handleDeleteAsset = async (assetId: string) => {
+    if (!account) return
+
+    const updatedAccount = deleteAssetFromAccount(account, assetId)
+    await saveAccount(updatedAccount)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -55,7 +62,7 @@ export default function AccountPage() {
     )
   }
 
-  const { totalCost, totalProfit, totalReturn } = calculateAccountStats(account)
+  const { holdingCost, totalProfit, activeAssets, totalAssets } = calculateAccountDetailedStats(account)
   const currency = account.settings.currency
 
   return (
@@ -91,18 +98,34 @@ export default function AccountPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
-          <StatCard label="总成本" value={totalCost} currency={currency} />
-          <StatCard
-            label="总收益"
-            value={totalProfit}
-            trend={totalProfit >= 0 ? "up" : "down"}
-            currency={currency}
+        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+          <MultiStatCard
+            title="持仓成本"
+            icon={DollarSign}
+            stats={[
+              {
+                label: "当前持仓成本",
+                value: holdingCost,
+                currency: currency,
+              },
+            ]}
           />
-          <StatCard
-            label="收益率"
-            value={`${totalReturn.toFixed(2)}%`}
-            trend={totalReturn >= 0 ? "up" : "down"}
+          <MultiStatCard
+            title="收益情况"
+            icon={TrendingUp}
+            trend={totalProfit >= 0 ? "up" : "down"}
+            stats={[
+              {
+                label: "已实现收益",
+                value: totalProfit,
+                currency: currency,
+                highlight: true,
+              },
+              {
+                label: "活跃资产数",
+                value: `${activeAssets}/${totalAssets} 个资产`,
+              },
+            ]}
           />
         </div>
 
@@ -139,6 +162,7 @@ export default function AccountPage() {
                   accountId={account.id}
                   accountType={account.type}
                   currency={currency}
+                  onDelete={handleDeleteAsset}
                 />
               ))}
           </div>

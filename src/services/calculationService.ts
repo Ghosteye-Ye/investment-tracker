@@ -7,6 +7,13 @@ export interface TransactionStats {
   totalReturn: number
 }
 
+export interface AccountDetailedStats {
+  holdingCost: number // 当前持仓成本
+  totalProfit: number // 已实现收益
+  activeAssets: number // 有持仓的资产数
+  totalAssets: number // 总资产数
+}
+
 /**
  * 计算单笔交易的买入金额（不含手续费）
  */
@@ -168,4 +175,69 @@ export function calculateAssetHoldingCost(asset: Asset): number {
   })
 
   return totalHoldingCost
+}
+
+/**
+ * 更新资产的统计数据
+ * @param asset 资产
+ * @returns 包含更新后统计数据的资产
+ */
+export function updateAssetStats(asset: Asset): Asset {
+  const { totalProfit, totalReturn } = calculateAssetStats(asset)
+  const holdingQuantity = calculateAssetHolding(asset)
+  const averagePrice = calculateAssetAveragePrice(asset)
+  const holdingCost = calculateAssetHoldingCost(asset)
+
+  return {
+    ...asset,
+    stats: {
+      holdingQuantity,
+      averagePrice,
+      holdingCost,
+      totalProfit,
+      totalReturn,
+    },
+  }
+}
+
+/**
+ * 计算账户的详细统计数据（基于资产的缓存统计）
+ * @param account 账户
+ * @returns 详细统计数据
+ */
+export function calculateAccountDetailedStats(account: Account): AccountDetailedStats {
+  let holdingCost = 0 // 当前持仓成本
+  let totalProfit = 0 // 已实现收益
+  let activeAssets = 0 // 有持仓的资产数
+
+  account.assets.forEach((asset) => {
+    // 从资产的 stats 中获取持仓成本
+    if (asset.stats?.holdingCost !== undefined) {
+      holdingCost += asset.stats.holdingCost
+    } else {
+      // 如果没有缓存，则实时计算
+      holdingCost += calculateAssetHoldingCost(asset)
+    }
+
+    // 从资产的 stats 中获取已实现收益
+    if (asset.stats?.totalProfit !== undefined) {
+      totalProfit += asset.stats.totalProfit
+    } else {
+      // 如果没有缓存，则实时计算
+      totalProfit += calculateAssetStats(asset).totalProfit
+    }
+
+    // 统计活跃资产数（有持仓的资产）
+    const assetHolding = asset.stats?.holdingQuantity ?? calculateAssetHolding(asset)
+    if (assetHolding > 0) {
+      activeAssets++
+    }
+  })
+
+  return {
+    holdingCost,
+    totalProfit,
+    activeAssets,
+    totalAssets: account.assets.length,
+  }
 }
