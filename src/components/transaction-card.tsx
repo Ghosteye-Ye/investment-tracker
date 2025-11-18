@@ -1,10 +1,26 @@
 "use client"
 
 import { useState } from "react"
-import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ShoppingCart } from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ShoppingCart, MoreVertical, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { SellTransactionModal } from "@/components/sell-transaction-modal"
 import type { Transaction, AccountSettings } from "@/types/investment"
 
@@ -29,6 +45,7 @@ interface TransactionCardProps {
   accountType: "stock" | "gold"
   accountSettings: AccountSettings
   onSell: (transactionId: string, sellDate: string, sellQuantity: number, sellPrice: number) => void
+  onDelete: (transactionId: string) => void
 }
 
 export function TransactionCard({
@@ -36,8 +53,10 @@ export function TransactionCard({
   accountType,
   accountSettings,
   onSell,
+  onDelete,
 }: TransactionCardProps) {
   const [showSellModal, setShowSellModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isExpanded, setIsExpanded] = useState(accountSettings.expandSubTransactions)
 
   const remainingQuantity = transaction.buyQuantity - (transaction.sellQuantity || 0)
@@ -59,13 +78,18 @@ export function TransactionCard({
     return 0
   }
 
+  const handleDelete = () => {
+    onDelete(transaction.id)
+    setShowDeleteDialog(false)
+  }
+
   return (
     <>
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         <CardContent className="p-6">
           <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)] ${
                     isFullySold ? "bg-green-500/20" : isPartiallySold ? "bg-yellow-500/20" : "bg-blue-500/20"
@@ -97,15 +121,37 @@ export function TransactionCard({
                   </CollapsibleTrigger>
                 )}
               </div>
-              {canSell && (
-                <Button
-                  onClick={() => setShowSellModal(true)}
-                  size="sm"
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full px-4 py-2 shadow-lg"
-                >
-                  卖出
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {canSell && (
+                  <Button
+                    onClick={() => setShowSellModal(true)}
+                    size="sm"
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full px-4 py-2 shadow-lg"
+                  >
+                    卖出
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                    <DropdownMenuItem
+                      className="text-red-400 focus:text-red-300 focus:bg-slate-700/50 cursor-pointer"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      删除交易
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* 买入信息 - 始终显示 */}
@@ -252,6 +298,44 @@ export function TransactionCard({
         accountSettings={accountSettings}
         onSubmit={onSell}
       />
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">确认删除交易</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {isFullySold && (
+                <>
+                  你确定要删除这笔已实现收益为{" "}
+                  <span className="text-white font-medium">
+                    {accountSettings.currency}
+                    {totalProfit.toLocaleString()}
+                  </span>{" "}
+                  的交易吗？
+                </>
+              )}
+              {!isFullySold && !isPartiallySold && <>你确定要删除这笔买入交易吗？</>}
+              {isPartiallySold && (
+                <>
+                  此交易包含 <span className="text-white font-medium">{subTransactions.length}</span> 条卖出记录，删除后所有相关数据都将被删除。
+                </>
+              )}
+              <br />
+              <br />
+              <span className="text-red-400 font-medium">此操作无法恢复，请谨慎操作！</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction className="bg-red-500 text-white hover:bg-red-600" onClick={handleDelete}>
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

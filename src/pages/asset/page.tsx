@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import type { Asset } from "@/types/investment"
 import { useAccountData } from "@/hooks/useAccountData"
 import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice, calculateAssetHoldingCost, updateAssetStats } from "@/services/calculationService"
-import { createBuyTransaction, createSellTransaction, addTransactionToAsset } from "@/services/transactionService"
+import { createBuyTransaction, createSellTransaction, addTransactionToAsset, deleteTransactionFromAsset } from "@/services/transactionService"
 
 export default function AssetPage() {
   const { accountId, assetId } = useParams<{ accountId: string; assetId: string }>()
@@ -84,6 +84,27 @@ export default function AssetPage() {
 
     setAsset(updatedAsset)
     await saveAccount(updatedAccount)
+  }
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (!account || !asset) return
+
+    // 删除交易
+    const updatedAccount = deleteTransactionFromAsset(account, asset.id, transactionId)
+
+    // 获取更新后的资产
+    const updatedAsset = updatedAccount.assets.find((a) => a.id === asset.id)
+    if (updatedAsset) {
+      // 重新计算统计数据
+      const updatedAssetWithStats = updateAssetStats(updatedAsset)
+      const finalAccount = {
+        ...updatedAccount,
+        assets: updatedAccount.assets.map((a) => (a.id === asset.id ? updatedAssetWithStats : a)),
+      }
+
+      setAsset(updatedAssetWithStats)
+      await saveAccount(finalAccount)
+    }
   }
 
   if (loading) {
@@ -209,6 +230,7 @@ export default function AssetPage() {
                   accountType={account.type}
                   accountSettings={account.settings}
                   onSell={handleSellTransaction}
+                  onDelete={handleDeleteTransaction}
                 />
               ))}
           </div>

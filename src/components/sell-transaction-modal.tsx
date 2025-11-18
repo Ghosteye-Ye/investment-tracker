@@ -70,6 +70,12 @@ export function SellTransactionModal({
       return
     }
 
+    // 黄金账户的卖出数量不能低于 1 克
+    if (accountType === "gold" && quantity < 1) {
+      alert("黄金账户的卖出数量不能低于 1 克")
+      return
+    }
+
     if (quantity > remainingQuantity) {
       alert(`卖出数量不能超过可卖数量 ${remainingQuantity} ${accountType === "stock" ? "股" : "克"}`)
       return
@@ -148,14 +154,16 @@ export function SellTransactionModal({
           <div>
             <Label htmlFor="sell-quantity" className="text-slate-300 text-sm font-medium">
               卖出数量 ({accountType === "stock" ? "股" : "克"})
+              {accountType === "gold" && <span className="text-slate-400 text-xs ml-2">（最少 1 克）</span>}
             </Label>
             <Input
               id="sell-quantity"
               type="number"
-              step="0.01"
+              step={accountType === "gold" ? "1" : "0.01"}
+              min={accountType === "gold" ? "1" : "0.01"}
               value={sellQuantity}
               onChange={(e) => setSellQuantity(e.target.value)}
-              placeholder="请输入卖出数量"
+              placeholder={accountType === "gold" ? "请输入卖出克数（最少 1 克）" : "请输入卖出数量"}
               className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
               required
             />
