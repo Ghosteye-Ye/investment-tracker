@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **UI Framework**: shadcn/ui components built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens
 - **Database**: Dexie (IndexedDB wrapper) for client-side storage
-- **Routing**: React Router v7 with file-based routing structure
+- **Routing**: React Router v7
 - **Forms**: React Hook Form with Zod validation
 - **Icons**: Lucide React
 
@@ -26,55 +26,118 @@ The application tracks investment portfolios with a hierarchical structure:
 Account → Asset → Transaction
 ```
 
-- **Account**: Top-level container (stock/gold accounts) with settings
-- **Asset**: Individual stocks/commodities within an account
-- **Transaction**: Buy/sell operations with profit calculations
+**Account** (types/investment.ts):
+- Top-level container for stock or gold accounts
+- Contains `settings` object with per-unit fee structure:
+  - `buyFeePerUnit` / `sellFeePerUnit` - Fee per share/gram
+  - `minBuyFee` / `minSellFee` - Minimum fee thresholds
+  - `expandSubTransactions` - UI preference for transaction display
+  - `currency` - Display currency ($ for stock, ¥ for gold)
+- Each account contains multiple assets
+
+**Asset**:
+- Individual stocks or commodities within an account
+- Has `name` and `symbol` fields
+- Contains array of transactions
+
+**Transaction**:
+- Tracks buy operations (required: buyDate, buyQuantity, buyPrice)
+- Optionally tracks sell operations (sellDate, sellQuantity, sellPrice)
+- Fee fields: `buyFee` and `sellFee` calculated based on account settings
+- Supports partial sells via `parentId` field for sub-transactions
+- Auto-calculates `profit` on sell
+
+### Architecture & Code Organization
+
+**Services Layer** (`src/services/`):
+- `feeService.ts` - Fee calculation logic (buy, sell, proportional)
+- `calculationService.ts` - Statistics calculations (profit, return, holdings)
+- `transactionService.ts` - Transaction business logic (create, update, delete)
+
+**Configuration** (`src/config/`):
+- `defaults.ts` - Default settings for stock/gold accounts and constants
+
+**Custom Hooks** (`src/hooks/`):
+- `useAccountData.ts` - Unified account data management with loading states
+- `useInvestmentDB.ts` - Database CRUD operations
+
+**Shared Components** (`src/components/shared/`):
+- `StatCard.tsx` - Reusable statistics card with trend indicators
+- `EmptyState.tsx` - Empty state placeholder with action button
 
 ### Database Layer
-- **Storage**: Dexie-based IndexedDB for persistent client-side data
-- **Schema**: Single `accounts` table storing denormalized account objects
-- **Operations**: CRUD operations via `hooks/useInvestmentDB.ts`
-- **Export/Import**: JSON-based data backup/restore functionality
+- **Storage**: Dexie-based IndexedDB (`lib/db.ts`)
+- **Schema**: Single `accounts` table with string IDs
+- **Data Structure**: Fully denormalized - entire account tree stored as one object
+- **Operations**: All CRUD functions in `hooks/useInvestmentDB.ts`:
+  - `getAllAccounts()` / `getAccountById(id)`
+  - `addAccount(account)` / `updateAccount(account)` / `deleteAccount(id)`
+  - `exportAccounts()` / `importAccounts(json)` - JSON backup/restore
+- **State Management**: Local useState in pages, updates via `useAccountData` hook
 
-### Component Architecture
-- **Card Components**: `account-card.tsx`, `asset-card.tsx`, `transaction-card.tsx` for displaying data
-- **Modal Components**: Create/edit forms for accounts, assets, and transactions
-- **UI Components**: shadcn/ui components in `/components/ui/`
-- **Layout**: Simple wrapper layout with potential for header/footer
+### Routing & Navigation
+Routes defined in `src/routes/index.tsx`:
+- `/` - Home page (all accounts overview with stats)
+- `/account/:accountId` - Account detail (all assets in account)
+- `/account/:accountId/settings` - Account settings editor (accessible from account page header)
+- `/asset/:accountId/:assetId` - Asset detail (all transactions)
 
-### Routing Structure
-- `/` - Home page (account overview)
-- `/account/:accountId` - Account detail page
-- `/account/:accountId/settings` - Account settings
-- `/asset/:accountId/:assetId` - Asset detail page
+Navigation uses React Router's `useNavigate()` and `useParams()` hooks.
+
+### Component Patterns
+
+**Page Components** (`src/pages/`):
+- Use `useAccountData` hook for data loading
+- Manage local state with `useState`
+- Use services for business logic
+- Use shared components (StatCard, EmptyState) for consistency
+- All lists sorted by `createdAt` in descending order (newest first)
+
+**Card Components**:
+- Display entities with stats using calculation services
+- Accept callbacks for actions
+- Use currency from account settings (no hardcoding)
+- Navigate to detail pages on click
+
+**Modal Components**:
+- Form-based creation/editing dialogs
+- Use React Hook Form + Zod for validation
+- Controlled via `isOpen` / `onClose` / `onSubmit` props
+
+### Fee Calculation System
+Fee calculation logic in `services/feeService.ts`:
+```typescript
+// Buy fee: max(quantity * buyFeePerUnit, minBuyFee)
+buyFee = Math.max(quantity * settings.buyFeePerUnit, settings.minBuyFee)
+
+// Sell fee: max(quantity * sellFeePerUnit, minSellFee)
+sellFee = Math.max(quantity * settings.sellFeePerUnit, settings.minSellFee)
+```
+
+Profit calculation accounts for proportional fee allocation on partial sells.
 
 ### Styling System
-- **Design System**: Dark theme with glassmorphism effects
-- **Color Palette**: Slate-based with semantic color tokens
-- **Components**: Consistent styling using Tailwind classes
-- **Animations**: Smooth transitions and hover effects
-- **Responsive**: Mobile-first approach with responsive breakpoints
+- **Theme**: Dark theme with glassmorphism (`bg-slate-800/50 backdrop-blur-sm`)
+- **Color Palette**: Slate base with semantic colors (green for profit, red for loss)
+- **Gradients**: `from-purple-500 to-blue-500` for CTAs
+- **Typography**: Chinese language UI (投资记录助手)
+- **Responsive**: Grid layouts with `md:` and `lg:` breakpoints
 
-### Key Features
-- **Multi-account Management**: Support for stock and gold investment accounts
-- **Transaction Tracking**: Buy/sell operations with fee calculations
-- **Profit Analysis**: Real-time profit/loss calculations and return percentages
-- **Data Export**: JSON export/import for backup purposes
-- **Responsive Design**: Mobile-friendly interface
+### Path Aliases
+`vite.config.ts` defines `@/` → `./src/` alias for clean imports.
 
-### File Organization
-- `/src/components/` - Reusable React components
-- `/src/components/ui/` - shadcn/ui base components
-- `/src/pages/` - Page components following route structure
-- `/src/hooks/` - Custom React hooks and database operations
-- `/src/lib/` - Utility functions and database configuration
-- `/src/types/` - TypeScript type definitions
-- `/src/styles/` - Global CSS and Tailwind configuration
+### Code Quality Guidelines
+- Use services for all business logic (no inline calculations)
+- Use shared components to avoid duplication
+- Use `useAccountData` hook for account management
+- Always use `account.settings.currency` instead of hardcoding
+- No `console.log` in production code
+- Remove commented code before committing
 
 ### Development Notes
-- Uses path aliases (`@/`) for clean imports
 - TypeScript strict mode enabled
 - ESLint configured for React and TypeScript
 - No testing framework currently configured
 - Uses pnpm as package manager
-- Vite for fast development and building
+- All user-facing text is in Chinese
+- Theme provider simplified (no next-themes dependency)

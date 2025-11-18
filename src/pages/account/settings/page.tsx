@@ -1,59 +1,59 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import { ArrowLeft, Save } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import type { Account } from "@/types/investment";
-import { getAccountById, updateAccount } from "@/hooks/useInvestmentDB";
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import type { AccountSettings } from "@/types/investment"
+import { useAccountData } from "@/hooks/useAccountData"
 
 export default function AccountSettingsPage() {
-  const params = useParams<{ accountId: string }>();
-  const navigate = useNavigate();
+  const params = useParams<{ accountId: string }>()
+  const navigate = useNavigate()
 
-  const [account, setAccount] = useState<Account | null>(null);
-  const [settings, setSettings] = useState({
+  const { account, loading, saveAccount } = useAccountData(params.accountId)
+  const [settings, setSettings] = useState<AccountSettings>({
     buyFeePerUnit: 0.0035,
     sellFeePerUnit: 0.0035,
     minBuyFee: 0.35,
     minSellFee: 0.35,
     expandSubTransactions: true,
     currency: "$",
-  });
+  })
 
   useEffect(() => {
-    if (!params.accountId) return;
-    getAccountById(params.accountId).then((acc) => {
-      console.log("======= acc ( page.tsx ) =======\n", acc);
-      if (acc) {
-        setAccount(acc);
-        setSettings(acc.settings || settings);
-      }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.accountId]);
+    if (account) {
+      setSettings(account.settings)
+    }
+  }, [account])
 
   const handleSave = async () => {
-    if (!account) return;
+    if (!account) return
 
-    const updatedAccount: Account = {
+    const updatedAccount = {
       ...account,
       settings,
-    };
+    }
 
-    await updateAccount(updatedAccount);
-    navigate(`/account/${account.id}`);
-  };
+    await saveAccount(updatedAccount)
+    navigate(`/account/${account.id}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-white">加载中...</div>
+      </div>
+    )
+  }
 
   if (!account) {
     return (
@@ -68,7 +68,7 @@ export default function AccountSettingsPage() {
           </Button>
         </div>
       </div>
-    );
+    )
   }
 
   return (

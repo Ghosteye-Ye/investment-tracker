@@ -1,40 +1,20 @@
-"use client"
-
 import { TrendingUp, TrendingDown, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Asset } from "@/types/investment"
-import { Link } from "react-router-dom";
+import { Link } from "react-router-dom"
+import { calculateAssetStats, calculateAssetHolding } from "@/services/calculationService"
 
 interface AssetCardProps {
   asset: Asset
   accountId: string
   accountType: "stock" | "gold"
+  currency?: string
 }
 
-export function AssetCard({ asset, accountId, accountType }: AssetCardProps) {
-  const getAssetStats = () => {
-    let totalCost = 0
-    let totalProfit = 0
-    let totalQuantity = 0
-    let soldQuantity = 0
-
-    asset.transactions.forEach((transaction) => {
-      totalCost += transaction.buyQuantity * transaction.buyPrice
-      totalQuantity += transaction.buyQuantity
-
-      if (transaction.sellPrice && transaction.sellQuantity) {
-        totalProfit += (transaction.sellPrice - transaction.buyPrice) * transaction.sellQuantity
-        soldQuantity += transaction.sellQuantity
-      }
-    })
-
-    const holdingQuantity = totalQuantity - soldQuantity
-    const totalReturn = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
-
-    return { totalCost, totalProfit, totalReturn, holdingQuantity, totalTransactions: asset.transactions.length }
-  }
-
-  const { totalCost, totalProfit, totalReturn, holdingQuantity, totalTransactions } = getAssetStats()
+export function AssetCard({ asset, accountId, accountType, currency = "¥" }: AssetCardProps) {
+  const { totalCost, totalProfit, totalReturn } = calculateAssetStats(asset)
+  const holdingQuantity = calculateAssetHolding(asset)
+  const totalTransactions = asset.transactions.length
 
   return (
     <Link to={`/asset/${accountId}/${asset.id}`}>
@@ -59,14 +39,14 @@ export function AssetCard({ asset, accountId, accountType }: AssetCardProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-slate-400 text-sm">总投资</span>
-            <span className="text-white font-medium">¥{totalCost.toLocaleString()}</span>
+            <span className="text-slate-400 text-sm">总成本</span>
+            <span className="text-white font-medium">{currency}{totalCost.toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400 text-sm">已实现收益</span>
             <span className={`font-medium ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-              ¥{totalProfit.toLocaleString()}
+              {currency}{totalProfit.toLocaleString()}
             </span>
           </div>
 

@@ -60,29 +60,29 @@ export function TransactionCard({
     <>
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)] ${
-                  isFullySold ? "bg-green-500/20" : isPartiallySold ? "bg-yellow-500/20" : "bg-blue-500/20"
-                }`}
-              >
-                {isFullySold ? (
-                  <TrendingUp className="w-6 h-6 text-green-400" />
-                ) : isPartiallySold ? (
-                  <TrendingDown className="w-6 h-6 text-yellow-400" />
-                ) : (
-                  <ShoppingCart className="w-6 h-6 text-blue-400" />
-                )}
-              </div>
-              <div>
-                <p className="text-white font-medium">
-                  {isFullySold ? "已卖出" : isPartiallySold ? "部分卖出" : "买入交易"}
-                </p>
-                <p className="text-slate-400 text-sm">{new Date(transaction.buyDate).toLocaleDateString()}</p>
-              </div>
-              {hasSubTransactions && (
-                <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+          <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.3)] ${
+                    isFullySold ? "bg-green-500/20" : isPartiallySold ? "bg-yellow-500/20" : "bg-blue-500/20"
+                  }`}
+                >
+                  {isFullySold ? (
+                    <TrendingUp className="w-6 h-6 text-green-400" />
+                  ) : isPartiallySold ? (
+                    <TrendingDown className="w-6 h-6 text-yellow-400" />
+                  ) : (
+                    <ShoppingCart className="w-6 h-6 text-blue-400" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-white font-medium">
+                    {isFullySold ? "已卖出" : isPartiallySold ? "部分卖出" : "买入交易"}
+                  </p>
+                  <p className="text-slate-400 text-sm">{new Date(transaction.buyDate).toLocaleDateString()}</p>
+                </div>
+                {hasSubTransactions && (
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
@@ -92,84 +92,82 @@ export function TransactionCard({
                       {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </Button>
                   </CollapsibleTrigger>
-                </Collapsible>
+                )}
+              </div>
+              {canSell && (
+                <Button
+                  onClick={() => setShowSellModal(true)}
+                  size="sm"
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full px-4 py-2 shadow-lg"
+                >
+                  卖出
+                </Button>
               )}
             </div>
-            {canSell && (
-              <Button
-                onClick={() => setShowSellModal(true)}
-                size="sm"
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-full px-4 py-2 shadow-lg"
-              >
-                卖出
-              </Button>
+
+            {/* 买入信息 - 始终显示 */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div>
+                <p className="text-slate-400 text-sm">买入时间</p>
+                <p className="text-white font-medium">{new Date(transaction.buyDate).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">买入数量</p>
+                <p className="text-white font-medium">
+                  {transaction.buyQuantity.toLocaleString()} {accountType === "stock" ? "股" : "克"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-sm">买入单价</p>
+                <p className="text-white font-medium">
+                  {accountSettings.currency}
+                  {transaction.buyPrice.toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* 卖出信息 - 仅在已卖出时显示 */}
+            {isFullySold && (
+              <div className="mt-4 pt-4 border-t border-slate-700/50">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-slate-400 text-sm">实现收益</p>
+                    <p className={`font-medium ${getTotalProfit() >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {accountSettings.currency}
+                      {getTotalProfit().toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">单笔收益率</p>
+                    <p className={`font-medium ${getTotalReturnRate() >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {getTotalReturnRate().toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
 
-          {/* 买入信息 - 始终显示 */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <p className="text-slate-400 text-sm">买入时间</p>
-              <p className="text-white font-medium">{new Date(transaction.buyDate).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-sm">买入数量</p>
-              <p className="text-white font-medium">
-                {transaction.buyQuantity.toLocaleString()} {accountType === "stock" ? "股" : "克"}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-400 text-sm">买入单价</p>
-              <p className="text-white font-medium">
-                {accountSettings.currency}
-                {transaction.buyPrice.toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          {/* 卖出信息 - 仅在已卖出时显示 */}
-          {isFullySold && (
-            <div className="mt-4 pt-4 border-t border-slate-700/50">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-slate-400 text-sm">实现收益</p>
-                  <p className={`font-medium ${getTotalProfit() >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {accountSettings.currency}
-                    {getTotalProfit().toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">单笔收益率</p>
-                  <p className={`font-medium ${getTotalReturnRate() >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {getTotalReturnRate().toFixed(2)}%
-                  </p>
+            {/* 单笔完整卖出信息 */}
+            {isFullySold && !hasSubTransactions && transaction.sellDate && (
+              <div className="mt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-slate-400 text-sm">卖出时间</p>
+                    <p className="text-white font-medium">{new Date(transaction.sellDate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">卖出单价</p>
+                    <p className="text-white font-medium">
+                      {accountSettings.currency}
+                      {transaction.sellPrice?.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* 单笔完整卖出信息 */}
-          {isFullySold && !hasSubTransactions && transaction.sellDate && (
-            <div className="mt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-slate-400 text-sm">卖出时间</p>
-                  <p className="text-white font-medium">{new Date(transaction.sellDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">卖出单价</p>
-                  <p className="text-white font-medium">
-                    {accountSettings.currency}
-                    {transaction.sellPrice?.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 子交易列表 */}
-          {hasSubTransactions && (
-            <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+            {/* 子交易列表 */}
+            {hasSubTransactions && (
               <CollapsibleContent className="mt-4 space-y-3">
                 {subTransactions.map((subTransaction) => (
                   <div key={subTransaction.id} className="ml-6 pl-4 border-l-2 border-slate-600/50">
@@ -238,8 +236,8 @@ export function TransactionCard({
                   </div>
                 ))}
               </CollapsibleContent>
-            </Collapsible>
-          )}
+            )}
+          </Collapsible>
         </CardContent>
       </Card>
 

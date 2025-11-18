@@ -1,42 +1,19 @@
-"use client"
-import { MoreVertical, TrendingUp, TrendingDown, Edit, Trash2, Settings } from "lucide-react"
+import { MoreVertical, TrendingUp, TrendingDown, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import type { Account } from "@/types/investment"
-import { Link } from "react-router-dom";
+import { Link } from "react-router-dom"
+import { calculateAccountStats } from "@/services/calculationService"
 
 interface AccountCardProps {
   account: Account
-  onUpdate: (account: Account) => void
   onDelete: (accountId: string) => void
 }
 
-export function AccountCard({ account, onUpdate, onDelete }: AccountCardProps) {
-  const getAccountStats = () => {
-    let totalCost = 0
-    let totalProfit = 0
-    const totalAssets = account.assets.length
-
-    account.assets.forEach((asset) => {
-      asset.transactions.forEach((transaction) => {
-        const buyCost = transaction.buyQuantity * transaction.buyPrice + (transaction.buyFee || 0)
-        totalCost += buyCost
-        if (transaction.sellPrice && transaction.sellQuantity) {
-          const sellRevenue = transaction.sellPrice * transaction.sellQuantity - (transaction.sellFee || 0)
-          const buyPortionCost =
-            transaction.buyPrice * transaction.sellQuantity +
-            (transaction.buyFee || 0) * (transaction.sellQuantity / transaction.buyQuantity)
-          totalProfit += sellRevenue - buyPortionCost
-        }
-      })
-    })
-
-    const totalReturn = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
-
-    return { totalCost, totalProfit, totalReturn, totalAssets }
-  }
-
-  const { totalCost, totalProfit, totalReturn, totalAssets } = getAccountStats()
+export function AccountCard({ account, onDelete }: AccountCardProps) {
+  const { totalCost, totalProfit, totalReturn } = calculateAccountStats(account)
+  const totalAssets = account.assets.length
+  const currency = account.settings.currency
 
   return (
     <Link to={`/account/${account.id}`}>
@@ -55,7 +32,7 @@ export function AccountCard({ account, onUpdate, onDelete }: AccountCardProps) {
                 size="sm"
                 onClick={(e) => {
                   e.preventDefault()
-                  e.stopPropagation() // 阻止事件冒泡
+                  e.stopPropagation()
                 }}
                 className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full w-8 h-8 p-0 opacity-100 transition-opacity"
               >
@@ -64,29 +41,15 @@ export function AccountCard({ account, onUpdate, onDelete }: AccountCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-slate-800 border-slate-700">
               <DropdownMenuItem
-                className="text-slate-300 hover:text-white hover:bg-slate-700"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                编辑
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-slate-300 hover:text-white hover:bg-slate-700"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                <Link to={`/account/${account.id}/settings`}>设置</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                 onClick={(e) => {
                   e.preventDefault()
-                  e.stopPropagation() // 阻止事件冒泡
+                  e.stopPropagation()
                   onDelete(account.id)
                 }}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                删除
+                删除账户
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -94,14 +57,14 @@ export function AccountCard({ account, onUpdate, onDelete }: AccountCardProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-slate-400 text-sm">总投资</span>
-            <span className="text-white font-medium">¥{totalCost.toLocaleString()}</span>
+            <span className="text-slate-400 text-sm">总成本</span>
+            <span className="text-white font-medium">{currency}{totalCost.toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400 text-sm">总收益</span>
             <span className={`font-medium ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-              ¥{totalProfit.toLocaleString()}
+              {currency}{totalProfit.toLocaleString()}
             </span>
           </div>
 

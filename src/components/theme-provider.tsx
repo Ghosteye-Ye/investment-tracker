@@ -1,11 +1,6 @@
-'use client'
-
 import * as React from 'react'
-import {
-  ThemeProvider as NextThemesProvider,
-  type ThemeProviderProps,
-} from 'next-themes'
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+// 简化的 ThemeProvider - 本项目暂不使用主题切换
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
 }

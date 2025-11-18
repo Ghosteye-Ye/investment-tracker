@@ -1,26 +1,22 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Plus, TrendingUp, TrendingDown } from "lucide-react"
+import { ArrowLeft, Plus, TrendingUp, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AssetCard } from "@/components/asset-card"
 import { CreateAssetModal } from "@/components/create-asset-modal"
-import type { Account, Asset } from "@/types/investment"
-import { getAccountById, updateAccount } from "@/hooks/useInvestmentDB"
+import { StatCard } from "@/components/shared/StatCard"
+import { EmptyState } from "@/components/shared/EmptyState"
+import type { Asset } from "@/types/investment"
+import { useAccountData } from "@/hooks/useAccountData"
+import { calculateAccountStats } from "@/services/calculationService"
+import { addAssetToAccount } from "@/services/transactionService"
 
 export default function AccountPage() {
   const { accountId } = useParams<{ accountId: string }>()
   const navigate = useNavigate()
 
-  const [account, setAccount] = useState<Account | null>(null)
+  const { account, loading, saveAccount } = useAccountData(accountId)
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  useEffect(() => {
-    if (accountId) {
-      getAccountById(accountId).then(setAccount)
-    }
-  }, [accountId])
 
   const handleCreateAsset = async (name: string, symbol: string) => {
     if (!account) return
@@ -33,37 +29,17 @@ export default function AccountPage() {
       createdAt: new Date().toISOString(),
     }
 
-    const updatedAccount: Account = {
-      ...account,
-      assets: [...account.assets, newAsset],
-    }
-
-    await updateAccount(updatedAccount)
-    setAccount(updatedAccount)
+    const updatedAccount = addAssetToAccount(account, newAsset)
+    await saveAccount(updatedAccount)
     setShowCreateModal(false)
   }
 
-  const getAccountStats = () => {
-    if (!account) return { totalCost: 0, totalProfit: 0, totalReturn: 0 }
-
-    let totalCost = 0
-    let totalProfit = 0
-
-    account.assets.forEach((asset) => {
-      asset.transactions.forEach((transaction) => {
-        totalCost += transaction.buyQuantity * transaction.buyPrice
-        if (transaction.sellPrice && transaction.sellQuantity) {
-          const sellRevenue = transaction.sellPrice * transaction.sellQuantity
-          const buyCost = transaction.buyPrice * transaction.sellQuantity
-          const buyFee = (transaction.buyFee || 0) * (transaction.sellQuantity / transaction.buyQuantity)
-          const sellFee = transaction.sellFee || 0
-          totalProfit += sellRevenue - buyCost - buyFee - sellFee
-        }
-      })
-    })
-
-    const totalReturn = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
-    return { totalCost, totalProfit, totalReturn }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="text-white">加载中...</div>
+      </div>
+    )
   }
 
   if (!account) {
@@ -79,97 +55,92 @@ export default function AccountPage() {
     )
   }
 
-  const { totalCost, totalProfit, totalReturn } = getAccountStats()
+  const { totalCost, totalProfit, totalReturn } = calculateAccountStats(account)
+  const currency = account.settings.currency
 
   return (
     <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="w-10 h-10 p-0 rounded-full text-slate-400 hover:text-white hover:bg-slate-700/50"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{account.name}</h1>
+              <p className="text-slate-400">
+                {account.type === "stock" ? "股票账户" : "黄金账户"} • {account.assets.length} 个标的
+              </p>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/")}
-            className="w-10 h-10 p-0 rounded-full text-slate-400 hover:text-white hover:bg-slate-700/50"
+            onClick={() => navigate(`/account/${account.id}/settings`)}
+            className="text-slate-400 hover:text-white hover:bg-slate-700/50"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Settings className="w-5 h-5 mr-2" />
+            账户设置
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">{account.name}</h1>
-            <p className="text-slate-400">
-              {account.type === "stock" ? "股票账户" : "黄金账户"} • {account.assets.length} 个标的
-            </p>
-          </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
-            <p className="mb-1 text-sm text-slate-400">总投资</p>
-            <p className="text-2xl font-bold text-white">¥{totalCost.toLocaleString()}</p>
-          </div>
-
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
-            <p className="mb-1 text-sm text-slate-400">总收益</p>
-            <p className={`text-2xl font-bold ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-              ¥{totalProfit.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="mb-1 text-sm text-slate-400">收益率</p>
-                <p className={`text-2xl font-bold ${totalReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {totalReturn.toFixed(2)}%
-                </p>
-              </div>
-              {totalReturn >= 0 ? (
-                <TrendingUp className="w-8 h-8 text-green-400" />
-              ) : (
-                <TrendingDown className="w-8 h-8 text-red-400" />
-              )}
-            </div>
-          </div>
+          <StatCard label="总成本" value={totalCost} currency={currency} />
+          <StatCard
+            label="总收益"
+            value={totalProfit}
+            trend={totalProfit >= 0 ? "up" : "down"}
+            currency={currency}
+          />
+          <StatCard
+            label="收益率"
+            value={`${totalReturn.toFixed(2)}%`}
+            trend={totalReturn >= 0 ? "up" : "down"}
+          />
         </div>
 
         {/* Assets Section */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-white">投资标的</h2>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            添加标的
-          </Button>
-        </div>
-
-        {account.assets.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="w-12 h-12 text-slate-500" />
-            </div>
-            <h3 className="mb-2 text-lg font-medium text-white">还没有投资标的</h3>
-            <p className="mb-6 text-slate-400">添加您的第一个{account.type === "stock" ? "股票" : "黄金"}标的</p>
+          {account.assets.length > 0 && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="px-8 py-3 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+              className="px-6 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
             >
               <Plus className="w-4 h-4 mr-2" />
               添加标的
             </Button>
-          </div>
+          )}
+        </div>
+
+        {account.assets.length === 0 ? (
+          <EmptyState
+            icon={TrendingUp}
+            title="还没有投资标的"
+            description={`添加您的第一个${account.type === "stock" ? "股票" : "黄金"}标的`}
+            actionLabel="添加标的"
+            onAction={() => setShowCreateModal(true)}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {account.assets.map((asset) => (
-              <AssetCard
-                key={asset.id}
-                asset={asset}
-                accountId={account.id}
-                accountType={account.type}
-              />
-            ))}
+            {account.assets
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map((asset) => (
+                <AssetCard
+                  key={asset.id}
+                  asset={asset}
+                  accountId={account.id}
+                  accountType={account.type}
+                  currency={currency}
+                />
+              ))}
           </div>
         )}
 

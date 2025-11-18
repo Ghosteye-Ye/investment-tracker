@@ -49,17 +49,13 @@ export function SellTransactionModal({
     return 0
   }
 
-  const calculateAnnualReturn = () => {
+  const calculateReturnRate = () => {
     const profit = calculateProfit()
     const quantity = Number.parseFloat(sellQuantity)
-    const price = Number.parseFloat(sellPrice)
 
-    if (quantity > 0 && price > 0) {
-      const daysDiff = Math.max(
-        1,
-        Math.ceil((new Date(sellDate).getTime() - new Date(transaction.buyDate).getTime()) / (1000 * 60 * 60 * 24)),
-      )
-      return (profit / (transaction.buyPrice * quantity)) * (365 / daysDiff) * 100
+    if (quantity > 0) {
+      const cost = transaction.buyPrice * quantity
+      return cost > 0 ? (profit / cost) * 100 : 0
     }
     return 0
   }
@@ -69,19 +65,35 @@ export function SellTransactionModal({
     const quantity = Number.parseFloat(sellQuantity)
     const price = Number.parseFloat(sellPrice)
 
-    if (quantity > 0 && price > 0 && quantity <= remainingQuantity) {
-      onSubmit(transaction.id, sellDate, quantity, price)
-      setSellQuantity("")
-      setSellPrice("")
-      setSellDate(new Date().toISOString().split("T")[0])
-      onClose()
+    if (!quantity || quantity <= 0) {
+      alert(`卖出数量必须大于 0 ${accountType === "stock" ? "股" : "克"}`)
+      return
     }
+
+    if (quantity > remainingQuantity) {
+      alert(`卖出数量不能超过可卖数量 ${remainingQuantity} ${accountType === "stock" ? "股" : "克"}`)
+      return
+    }
+
+    if (!price || price <= 0) {
+      alert("卖出单价必须大于 0")
+      return
+    }
+
+    // 将日期转换为完整的 ISO 时间戳（包含当前时分秒）
+    const sellDateTime = new Date(sellDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString()
+
+    onSubmit(transaction.id, sellDateTime, quantity, price)
+    setSellQuantity("")
+    setSellPrice("")
+    setSellDate(new Date().toISOString().split("T")[0])
+    onClose()
   }
 
   if (!isOpen) return null
 
   const profit = calculateProfit()
-  const annualReturn = calculateAnnualReturn()
+  const returnRate = calculateReturnRate()
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -141,13 +153,8 @@ export function SellTransactionModal({
               id="sell-quantity"
               type="number"
               step="0.01"
-              min="0.01"
-              max={remainingQuantity}
               value={sellQuantity}
-              onChange={(e) => {
-                const value = Math.min(remainingQuantity, Math.max(0.01, Number.parseFloat(e.target.value) || 0))
-                setSellQuantity(value.toString())
-              }}
+              onChange={(e) => setSellQuantity(e.target.value)}
               placeholder="请输入卖出数量"
               className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
               required
@@ -162,12 +169,8 @@ export function SellTransactionModal({
               id="sell-price"
               type="number"
               step="0.01"
-              min="0.01"
               value={sellPrice}
-              onChange={(e) => {
-                const value = Math.max(0.01, Number.parseFloat(e.target.value) || 0)
-                setSellPrice(value.toString())
-              }}
+              onChange={(e) => setSellPrice(e.target.value)}
               placeholder="请输入卖出单价"
               className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
               required
@@ -211,9 +214,9 @@ export function SellTransactionModal({
                   </div>
                 </div>
                 <div>
-                  <p className="text-slate-400 text-sm">年化收益率</p>
-                  <p className={`text-lg font-bold ${annualReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {annualReturn.toFixed(2)}%
+                  <p className="text-slate-400 text-sm">预计收益率</p>
+                  <p className={`text-lg font-bold ${returnRate >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {returnRate.toFixed(2)}%
                   </p>
                 </div>
               </div>

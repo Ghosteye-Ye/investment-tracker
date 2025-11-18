@@ -8,15 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/date-picker"
+import type { AccountSettings } from "@/types/investment"
+import { calculateBuyFee } from "@/services/feeService"
 
 interface CreateTransactionModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (buyDate: string, buyQuantity: number, buyPrice: number) => void
   accountType: "stock" | "gold"
+  currency: string
+  accountSettings: AccountSettings
 }
 
-export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType }: CreateTransactionModalProps) {
+export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType, currency, accountSettings }: CreateTransactionModalProps) {
   const [buyDate, setBuyDate] = useState(new Date().toISOString().split("T")[0])
   const [buyQuantity, setBuyQuantity] = useState("")
   const [buyPrice, setBuyPrice] = useState("")
@@ -26,12 +30,23 @@ export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType 
     const quantity = Number.parseFloat(buyQuantity)
     const price = Number.parseFloat(buyPrice)
 
-    if (quantity > 0 && price > 0) {
-      onSubmit(buyDate, quantity, price)
-      setBuyQuantity("")
-      setBuyPrice("")
-      setBuyDate(new Date().toISOString().split("T")[0])
+    if (!quantity || quantity <= 0) {
+      alert(`买入数量不能低于 0 ${accountType === "stock" ? "股" : "克"}`)
+      return
     }
+
+    if (!price || price <= 0) {
+      alert("买入单价必须大于 0")
+      return
+    }
+
+    // 将日期转换为完整的 ISO 时间戳（包含当前时分秒）
+    const buyDateTime = new Date(buyDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString()
+
+    onSubmit(buyDateTime, quantity, price)
+    setBuyQuantity("")
+    setBuyPrice("")
+    setBuyDate(new Date().toISOString().split("T")[0])
   }
 
   if (!isOpen) return null
@@ -70,12 +85,8 @@ export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType 
               id="buy-quantity"
               type="number"
               step="0.01"
-              min="0.01"
               value={buyQuantity}
-              onChange={(e) => {
-                const value = Math.max(0.01, Number.parseFloat(e.target.value) || 0)
-                setBuyQuantity(value.toString())
-              }}
+              onChange={(e) => setBuyQuantity(e.target.value)}
               placeholder="请输入买入数量"
               className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
               required
@@ -84,18 +95,14 @@ export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType 
 
           <div>
             <Label htmlFor="buy-price" className="text-slate-300 text-sm font-medium">
-              买入单价 (¥)
+              买入单价 ({currency})
             </Label>
             <Input
               id="buy-price"
               type="number"
               step="0.01"
-              min="0.01"
               value={buyPrice}
-              onChange={(e) => {
-                const value = Math.max(0.01, Number.parseFloat(e.target.value) || 0)
-                setBuyPrice(value.toString())
-              }}
+              onChange={(e) => setBuyPrice(e.target.value)}
               placeholder="请输入买入单价"
               className="mt-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
               required
@@ -104,10 +111,22 @@ export function CreateTransactionModal({ isOpen, onClose, onSubmit, accountType 
 
           {buyQuantity && buyPrice && (
             <div className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/50">
-              <p className="text-slate-400 text-sm mb-1">买入总额</p>
-              <p className="text-xl font-bold text-white">
-                ¥{(Number.parseFloat(buyQuantity) * Number.parseFloat(buyPrice)).toLocaleString()}
-              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">买入总额</p>
+                  <p className="text-xl font-bold text-white">
+                    {currency}
+                    {(Number.parseFloat(buyQuantity) * Number.parseFloat(buyPrice)).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">买入手续费</p>
+                  <p className="text-white">
+                    {currency}
+                    {calculateBuyFee(Number.parseFloat(buyQuantity), accountSettings).toFixed(2)}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

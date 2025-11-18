@@ -18,7 +18,6 @@ export interface Transaction {
   sellPrice?: number
   sellFee?: number // 卖出手续费
   profit?: number
-  annualReturn?: number
   createdAt: string
   parentId?: string // 用于标识子交易
 }
