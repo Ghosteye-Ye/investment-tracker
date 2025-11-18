@@ -15,11 +15,11 @@ export interface Transaction {
   buyFee?: number // 买入手续费
   sellDate?: string
   sellQuantity?: number
-  sellPrice?: number
+  sellPrice?: number // 分批卖出时为所有子交易卖出单价的均值
   sellFee?: number // 卖出手续费
-  profit?: number
+  profit?: number // 已实现收益
   createdAt: string
-  parentId?: string // 用于标识子交易
+  children?: Transaction[] // 子交易数组（分批卖出时使用）
 }
 
 export interface Asset {

@@ -28,11 +28,13 @@ export function createBuyTransaction(
 }
 
 /**
- * 创建卖出交易(更新现有交易或创建子交易)
+ * 创建卖出交易
+ * - 一次性全部卖出：直接更新交易记录，不创建子交易
+ * - 分批卖出：创建子交易并添加到 children 数组
  * @param transaction 原交易记录
  * @param sellData 卖出数据
  * @param account 账户信息
- * @returns 更新后的交易和可能的子交易
+ * @returns 更新后的交易
  */
 export function createSellTransaction(
   transaction: Transaction,
@@ -42,67 +44,84 @@ export function createSellTransaction(
     sellPrice: number
   },
   account: Account
-): { updatedTransaction: Transaction; subTransaction?: Transaction } {
+): Transaction {
   const { sellDate, sellQuantity, sellPrice } = sellData
-  const sellFee = calculateSellFee(sellQuantity, account.settings)
 
   const holdingQuantity = transaction.buyQuantity - (transaction.sellQuantity || 0)
 
-  // 计算收益
-  const buyCost = transaction.buyPrice * sellQuantity
-  const buyFee = calculateProportionalBuyFee(transaction.buyFee || 0, sellQuantity, transaction.buyQuantity)
-  const sellRevenue = sellPrice * sellQuantity
-  const profit = sellRevenue - sellFee - buyCost - buyFee
+  // 实际卖出数量不能超过持仓数量
+  const actualSellQuantity = Math.min(sellQuantity, holdingQuantity)
+  const actualSellFee = calculateSellFee(actualSellQuantity, account.settings)
 
-  // 完全卖出
-  if (sellQuantity >= holdingQuantity) {
-    const actualSellQuantity = holdingQuantity
-    const actualSellFee = calculateSellFee(actualSellQuantity, account.settings)
+  // 计算这次卖出的成本和收益
+  const actualBuyCost = transaction.buyPrice * actualSellQuantity
+  const actualBuyFee = calculateProportionalBuyFee(
+    transaction.buyFee || 0,
+    actualSellQuantity,
+    transaction.buyQuantity
+  )
 
-    const actualBuyCost = transaction.buyPrice * actualSellQuantity
-    const actualBuyFee = calculateProportionalBuyFee(
-      transaction.buyFee || 0,
-      actualSellQuantity,
-      transaction.buyQuantity
-    )
+  const actualSellRevenue = sellPrice * actualSellQuantity
+  const actualProfit = actualSellRevenue - actualSellFee - actualBuyCost - actualBuyFee
 
-    const actualSellRevenue = sellPrice * actualSellQuantity
-    const actualProfit = actualSellRevenue - actualSellFee - actualBuyCost - actualBuyFee
+  // 一次性全部卖出（没有之前的卖出记录，且卖出数量等于买入数量）
+  const isFullSellAtOnce = (transaction.sellQuantity || 0) === 0 && actualSellQuantity === transaction.buyQuantity
 
-    const updatedTransaction: Transaction = {
+  if (isFullSellAtOnce) {
+    // 一次性卖出：直接更新交易，不创建子交易
+    return {
       ...transaction,
       sellDate,
-      sellQuantity: transaction.buyQuantity,
+      sellQuantity: actualSellQuantity,
       sellPrice,
-      sellFee: (transaction.sellFee || 0) + actualSellFee,
-      profit: (transaction.profit || 0) + actualProfit,
+      sellFee: actualSellFee,
+      profit: actualProfit,
     }
-
-    return { updatedTransaction }
   } else {
-    // 部分卖出 - 创建子交易
+    // 分批卖出：创建子交易
     const subTransaction: Transaction = {
       id: Date.now().toString(),
       buyDate: transaction.buyDate,
-      buyQuantity: sellQuantity,
+      buyQuantity: actualSellQuantity,
       buyPrice: transaction.buyPrice,
-      buyFee,
+      buyFee: actualBuyFee,
       sellDate,
-      sellQuantity,
+      sellQuantity: actualSellQuantity,
       sellPrice,
-      sellFee,
-      profit,
-      parentId: transaction.id,
+      sellFee: actualSellFee,
+      profit: actualProfit,
       createdAt: new Date().toISOString(),
     }
 
-    // 更新原交易的卖出数量
+    // 获取现有子交易
+    const children = transaction.children || []
+    const updatedChildren = [...children, subTransaction]
+
+    // 计算所有子交易的卖出单价均值
+    const totalSellValue = updatedChildren.reduce((sum, child) => {
+      return sum + (child.sellPrice || 0) * (child.sellQuantity || 0)
+    }, 0)
+    const totalSellQuantity = updatedChildren.reduce((sum, child) => {
+      return sum + (child.sellQuantity || 0)
+    }, 0)
+    const averageSellPrice = totalSellQuantity > 0 ? totalSellValue / totalSellQuantity : undefined
+
+    // 更新主交易
     const updatedTransaction: Transaction = {
       ...transaction,
-      sellQuantity: (transaction.sellQuantity || 0) + sellQuantity,
+      sellQuantity: (transaction.sellQuantity || 0) + actualSellQuantity,
+      sellFee: (transaction.sellFee || 0) + actualSellFee,
+      profit: (transaction.profit || 0) + actualProfit,
+      sellPrice: averageSellPrice,
+      children: updatedChildren,
     }
 
-    return { updatedTransaction, subTransaction }
+    // 如果完全卖出，记录最后的卖出日期
+    if (updatedTransaction.sellQuantity === transaction.buyQuantity) {
+      updatedTransaction.sellDate = sellDate
+    }
+
+    return updatedTransaction
   }
 }
 
@@ -172,7 +191,7 @@ export function deleteTransactionFromAsset(
       asset.id === assetId
         ? {
             ...asset,
-            transactions: asset.transactions.filter((t) => t.id !== transactionId && t.parentId !== transactionId),
+            transactions: asset.transactions.filter((t) => t.id !== transactionId),
           }
         : asset
     ),

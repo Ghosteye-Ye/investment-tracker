@@ -8,12 +8,27 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { SellTransactionModal } from "@/components/sell-transaction-modal"
 import type { Transaction, AccountSettings } from "@/types/investment"
 
+/**
+ * 格式化日期时间，显示完整的时分秒
+ */
+const formatDateTime = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  })
+}
+
 interface TransactionCardProps {
   transaction: Transaction
   accountType: "stock" | "gold"
   accountSettings: AccountSettings
   onSell: (transactionId: string, sellDate: string, sellQuantity: number, sellPrice: number) => void
-  subTransactions?: Transaction[]
 }
 
 export function TransactionCard({
@@ -21,34 +36,22 @@ export function TransactionCard({
   accountType,
   accountSettings,
   onSell,
-  subTransactions = [],
 }: TransactionCardProps) {
   const [showSellModal, setShowSellModal] = useState(false)
   const [isExpanded, setIsExpanded] = useState(accountSettings.expandSubTransactions)
 
   const remainingQuantity = transaction.buyQuantity - (transaction.sellQuantity || 0)
+  const subTransactions = transaction.children || []
   const hasSubTransactions = subTransactions.length > 0
   const canSell = remainingQuantity > 0
   const isFullySold = remainingQuantity === 0
   const isPartiallySold = (transaction.sellQuantity || 0) > 0 && remainingQuantity > 0
 
-  // 计算总实现收益（包括所有子交易）
-  const getTotalProfit = () => {
-    let totalProfit = 0
-    if (transaction.profit) {
-      totalProfit += transaction.profit
-    }
-    subTransactions.forEach((sub) => {
-      if (sub.profit) {
-        totalProfit += sub.profit
-      }
-    })
-    return totalProfit
-  }
+  // 父级交易的 profit 已经累计了所有子交易的收益
+  const totalProfit = transaction.profit || 0
 
   // 计算总收益率
   const getTotalReturnRate = () => {
-    const totalProfit = getTotalProfit()
     const totalSoldQuantity = transaction.sellQuantity || 0
     if (totalSoldQuantity > 0) {
       return (totalProfit / (totalSoldQuantity * transaction.buyPrice)) * 100
@@ -80,7 +83,7 @@ export function TransactionCard({
                   <p className="text-white font-medium">
                     {isFullySold ? "已卖出" : isPartiallySold ? "部分卖出" : "买入交易"}
                   </p>
-                  <p className="text-slate-400 text-sm">{new Date(transaction.buyDate).toLocaleDateString()}</p>
+                  <p className="text-slate-400 text-sm">{formatDateTime(transaction.buyDate)}</p>
                 </div>
                 {hasSubTransactions && (
                   <CollapsibleTrigger asChild>
@@ -109,7 +112,7 @@ export function TransactionCard({
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <p className="text-slate-400 text-sm">买入时间</p>
-                <p className="text-white font-medium">{new Date(transaction.buyDate).toLocaleDateString()}</p>
+                <p className="text-white font-medium text-sm">{formatDateTime(transaction.buyDate)}</p>
               </div>
               <div>
                 <p className="text-slate-400 text-sm">买入数量</p>
@@ -132,9 +135,9 @@ export function TransactionCard({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-slate-400 text-sm">实现收益</p>
-                    <p className={`font-medium ${getTotalProfit() >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <p className={`font-medium ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {accountSettings.currency}
-                      {getTotalProfit().toLocaleString()}
+                      {totalProfit.toLocaleString()}
                     </p>
                   </div>
                   <div>
@@ -153,7 +156,7 @@ export function TransactionCard({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-slate-400 text-sm">卖出时间</p>
-                    <p className="text-white font-medium">{new Date(transaction.sellDate).toLocaleDateString()}</p>
+                    <p className="text-white font-medium text-sm">{formatDateTime(transaction.sellDate)}</p>
                   </div>
                   <div>
                     <p className="text-slate-400 text-sm">卖出单价</p>
@@ -179,7 +182,7 @@ export function TransactionCard({
                         <div>
                           <p className="text-white text-sm font-medium">卖出记录</p>
                           <p className="text-slate-400 text-xs">
-                            {subTransaction.sellDate && new Date(subTransaction.sellDate).toLocaleDateString()}
+                            {subTransaction.sellDate && formatDateTime(subTransaction.sellDate)}
                           </p>
                         </div>
                       </div>
@@ -187,8 +190,8 @@ export function TransactionCard({
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                           <p className="text-slate-400 text-xs">卖出时间</p>
-                          <p className="text-white">
-                            {subTransaction.sellDate && new Date(subTransaction.sellDate).toLocaleDateString()}
+                          <p className="text-white text-xs">
+                            {subTransaction.sellDate && formatDateTime(subTransaction.sellDate)}
                           </p>
                         </div>
                         <div>

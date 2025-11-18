@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ArrowLeft, Plus, Calendar, DollarSign } from "lucide-react"
+import { ArrowLeft, Plus, Calendar, DollarSign, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TransactionCard } from "@/components/transaction-card"
 import { CreateTransactionModal } from "@/components/create-transaction-modal"
-import { StatCard } from "@/components/shared/StatCard"
+import { MultiStatCard } from "@/components/shared/MultiStatCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import type { Asset } from "@/types/investment"
 import { useAccountData } from "@/hooks/useAccountData"
-import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice } from "@/services/calculationService"
+import { calculateAssetStats, calculateAssetHolding, calculateAssetAveragePrice, calculateAssetHoldingCost } from "@/services/calculationService"
 import { createBuyTransaction, createSellTransaction, addTransactionToAsset } from "@/services/transactionService"
 
 export default function AssetPage() {
@@ -49,20 +49,15 @@ export default function AssetPage() {
     const transaction = asset.transactions.find((t) => t.id === transactionId)
     if (!transaction) return
 
-    const { updatedTransaction, subTransaction } = createSellTransaction(
+    const updatedTransaction = createSellTransaction(
       transaction,
       { sellDate, sellQuantity, sellPrice },
       account
     )
 
-    let updatedTransactions = asset.transactions.map((t) =>
+    const updatedTransactions = asset.transactions.map((t) =>
       t.id === transaction.id ? updatedTransaction : t
     )
-
-    // 如果有子交易,添加到列表开头
-    if (subTransaction) {
-      updatedTransactions = [subTransaction, ...updatedTransactions]
-    }
 
     const updatedAsset: Asset = {
       ...asset,
@@ -102,6 +97,7 @@ export default function AssetPage() {
   const { totalProfit, totalReturn } = calculateAssetStats(asset)
   const holdingQuantity = calculateAssetHolding(asset)
   const averagePrice = calculateAssetAveragePrice(asset)
+  const holdingCost = calculateAssetHoldingCost(asset)
   const currency = account.settings.currency
 
   return (
@@ -126,23 +122,44 @@ export default function AssetPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="买入均价" value={averagePrice} icon={DollarSign} currency={currency} />
-          <StatCard
-            label="已实现收益"
-            value={totalProfit}
+        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+          <MultiStatCard
+            title="持仓信息"
+            icon={DollarSign}
+            stats={[
+              {
+                label: `持有${account.type === "stock" ? "股数" : "克数"}`,
+                value: `${holdingQuantity.toLocaleString()} ${account.type === "stock" ? "股" : "克"}`,
+              },
+              {
+                label: "买入均价",
+                value: averagePrice,
+                currency: currency,
+              },
+              {
+                label: "持有成本",
+                value: holdingCost,
+                currency: currency,
+              },
+            ]}
+          />
+          <MultiStatCard
+            title="收益情况"
+            icon={TrendingUp}
             trend={totalProfit >= 0 ? "up" : "down"}
-            currency={currency}
-          />
-          <StatCard
-            label="收益率"
-            value={`${totalReturn.toFixed(2)}%`}
-            trend={totalReturn >= 0 ? "up" : "down"}
-          />
-          <StatCard
-            label={`持有${account.type === "stock" ? "股数" : "克数"}`}
-            value={`${holdingQuantity.toLocaleString()} ${account.type === "stock" ? "股" : "克"}`}
-            icon={Calendar}
+            stats={[
+              {
+                label: "已实现收益",
+                value: totalProfit,
+                currency: currency,
+                highlight: true,
+              },
+              {
+                label: "收益率",
+                value: `${totalReturn.toFixed(2)}%`,
+                highlight: true,
+              },
+            ]}
           />
         </div>
 
@@ -171,21 +188,16 @@ export default function AssetPage() {
         ) : (
           <div className="space-y-4">
             {asset.transactions
-              .filter((t) => !t.parentId)
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-              .map((transaction) => {
-                const subTransactions = asset.transactions.filter((t) => t.parentId === transaction.id)
-                return (
-                  <TransactionCard
-                    key={transaction.id}
-                    transaction={transaction}
-                    accountType={account.type}
-                    accountSettings={account.settings}
-                    onSell={handleSellTransaction}
-                    subTransactions={subTransactions}
-                  />
-                )
-              })}
+              .map((transaction) => (
+                <TransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
+                  accountType={account.type}
+                  accountSettings={account.settings}
+                  onSell={handleSellTransaction}
+                />
+              ))}
           </div>
         )}
 

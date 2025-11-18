@@ -43,15 +43,26 @@ export function calculateTransactionProfit(transaction: Transaction): number {
  * @returns 统计数据
  */
 export function calculateAssetStats(asset: Asset): TransactionStats {
-  let totalCost = 0
-  let totalProfit = 0
+  let totalCost = 0 // 所有交易的总成本
+  let totalProfit = 0 // 已实现收益
+  let soldCost = 0 // 已卖出部分的成本（不含手续费）
 
   asset.transactions.forEach((transaction) => {
     totalCost += calculateTransactionBuyAmount(transaction)
-    totalProfit += calculateTransactionProfit(transaction)
+
+    // 已实现收益：使用交易记录中的 profit 字段
+    if (transaction.profit) {
+      totalProfit += transaction.profit
+    }
+
+    // 已卖出部分的成本（已卖出数量 × 买入单价，不含手续费）
+    if (transaction.sellQuantity && transaction.sellQuantity > 0) {
+      soldCost += transaction.buyPrice * transaction.sellQuantity
+    }
   })
 
-  const totalReturn = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
+  // 收益率 = 已实现收益 / 已卖出的成本
+  const totalReturn = soldCost > 0 ? (totalProfit / soldCost) * 100 : 0
 
   return { totalCost, totalProfit, totalReturn }
 }
@@ -138,4 +149,23 @@ export function calculateAssetAveragePrice(asset: Asset): number {
   })
 
   return totalHoldingQuantity > 0 ? totalHoldingCost / totalHoldingQuantity : 0
+}
+
+/**
+ * 计算资产的持有成本（未卖出股数 × 买入价格，不含手续费）
+ * @param asset 资产
+ * @returns 持有成本
+ */
+export function calculateAssetHoldingCost(asset: Asset): number {
+  let totalHoldingCost = 0
+
+  asset.transactions.forEach((transaction) => {
+    const holdingQuantity = calculateHoldingQuantity(transaction)
+
+    if (holdingQuantity > 0) {
+      totalHoldingCost += transaction.buyPrice * holdingQuantity
+    }
+  })
+
+  return totalHoldingCost
 }
